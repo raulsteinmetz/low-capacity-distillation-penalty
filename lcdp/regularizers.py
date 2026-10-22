@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 
 class WeakReproducer(nn.Module):
-    '''Tiny net mapping raw pixels to one feature vector per patch.'''
+    '''Tiny net mapping raw pixels to one feature vector per patch, optionally plus a map of the image-wide mean of its hidden features.'''
 
     def __init__(self, cfg: dict, img_size: int, patch_size: int, embed_dim: int):
         super().__init__()
@@ -21,10 +21,15 @@ class WeakReproducer(nn.Module):
         self.net = nn.Sequential(*layers)
         self.learn_pos = cfg['learn_pos']
         self.pos = nn.Parameter(torch.zeros(1, (img_size // patch_size) ** 2, embed_dim), requires_grad=self.learn_pos)
+        # zero-initialized and frozen unless global_pool, so W is purely local by default
+        self.global_head = nn.Parameter(torch.zeros(cfg['width'], embed_dim), requires_grad=cfg['global_pool'])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         '''Return features of shape (B, N, D), in ViT patch order.'''
-        return self.net(x).flatten(2).transpose(1, 2) + self.pos
+        hidden = self.net[:-1](x)
+        local = self.net[-1](hidden).flatten(2).transpose(1, 2)
+        image = hidden.mean((2, 3)) @ self.global_head # same for every patch of an image
+        return local + image.unsqueeze(1) + self.pos
 
 
 def target_norm(h: torch.Tensor) -> torch.Tensor:

@@ -55,6 +55,7 @@ weak_reproducer:
   depth: 1
   patch_window: 1 # receptive field in patches, odd
   learn_pos: true
+  global_pool: false # true adds a linear map of the image-wide mean of W's hidden features to every patch
   inner_steps: 1
   lr: 1.0e-3
   weight_decay: 0.0

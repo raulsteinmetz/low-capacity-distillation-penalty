@@ -32,3 +32,7 @@ runs:
     set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 3.0, weak_reproducer.penalty: cca}
   - name: 10-sigreg-cca
     set: {sigreg.weight: 0.045, weak_reproducer.weight: 1.0, weak_reproducer.penalty: cca}
+  - name: 13-tint-sigreg-cca-global
+    set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 1.0, weak_reproducer.penalty: cca, weak_reproducer.global_pool: true}
+  - name: 14-sigreg-cca-global
+    set: {sigreg.weight: 0.045, weak_reproducer.weight: 1.0, weak_reproducer.penalty: cca, weak_reproducer.global_pool: true}

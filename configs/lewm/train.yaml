@@ -19,5 +19,6 @@ weak:
   depth: 1
   patch_window: 1
   learn_pos: true
+  global_pool: false # true adds a linear map of the image-wide mean of W's hidden features to every patch
   lr: 1.0e-3
   weight_decay: 0.0
