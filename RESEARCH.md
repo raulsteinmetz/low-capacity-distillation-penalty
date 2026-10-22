@@ -56,6 +56,17 @@ Tinted CIFAR (tint 0.4). Probe on clean images. tint_r2 ceiling from the mean pi
 | 7 SIGReg | 26.4 +- 0.2 (26.5, 26.2, 26.6) | 0.74 to 0.75 | learns nothing over the untrained encoder |
 | 8 SIGReg plus R2 penalty | 28.0 +- 1.1 (27.7, 27.1, 29.2) | 0.75 | +1.6, tint kept |
 
+## LeWM setup
+
+- Environment `envs/lewm` (Python 3.10, `stable-worldmodel[train,env]`, `hdf5plugin`, lejepa from the submodule). Torch must be the cu128 build (`torch==2.11.0+cu128`), since the driver supports CUDA 12.8 only.
+- Data and checkpoints live in `data/stable-wm` (`datasets/tworoom.h5`, `checkpoints/<run>/weights_epoch_<k>.pt`).
+- Train with `envs/lewm/bin/python -m scripts.lewm_train data=tworoom output_model_name=<run> weak.weight=<w> trainer.max_epochs=10` from the repo root. Config `configs/lewm/train.yaml` extends `external/le-wm/config/train/lewm.yaml`. Metrics go to `runs/<run>/runs/<date>/<time>/<id>/metrics.csv` (every 50 steps and per val epoch).
+- The penalty is image level. W runs on each preprocessed 224x224 frame (patch 14, 16x16 grid), its patch features are mean-pooled, and the target is the projector output `emb` (the vector SIGReg sees and the predictor reads). W and E update in the same backward pass through detached copies, rather than W first as in CIFAR.
+- Mean-pooled W cannot encode where the agent is, since moving a red dot between patches leaves the patch mean unchanged (up to sub-patch effects and the per-position bias). So the penalty should not remove agent position in Two-Room. It targets global appearance.
+- Plan with `cd external/le-wm && STABLEWM_HOME=<repo>/data/stable-wm ../../envs/lewm/bin/python eval.py --config-name tworoom policy=<run>/weights_epoch_10.pt` (50 episodes, CEM). It works, at about 7 to 11 s per CEM solve.
+- The LeWM paper trains Two-Room and PushT for 10 epochs. LeWM is weakest on Two-Room, where the authors suspect SIGReg forces a high-dimensional Gaussian on low-dimensional data.
+- At 1.6 it/s with the GPU shared by 4 CIFAR runs, one Two-Room epoch (5138 steps at batch 128) takes about 53 min.
+
 ## Main findings
 
 1. The penalty cannot prevent collapse by itself. This is structural, not a bug.
@@ -119,3 +130,4 @@ Tinted CIFAR (tint 0.4). Probe on clean images. tint_r2 ceiling from the mean pi
   - Hypothesis. CCA catches the color that per-dim R2 missed, so tint_r2 drops below 0.75. Risk. Any direction of a ViT token that is predictable from its own 4x4 patch is penalized, which includes edges and local texture, so probe accuracy may drop at high weight.
 - 2026-10-22. Started LeWM preparation on CPU while the GPU runs CCA. Two-Room data is extracted to `data/stable-wm/tworoom.h5` (12.8 GB, set STABLEWM_HOME to `data/stable-wm`). The LeWM environment installs into `envs/lewm` (Python 3.10, `stable-worldmodel[train,env]`, log `runs/logs/lewm-install.log`). The submodule `external/le-wm` had its `config/train/data/*.yaml` deleted before this session. Restore them with git checkout inside the submodule before training.
   - Why now. The user asked to scale toward LeWM benchmarks. Plain CIFAR shows a consistent gain (+3.7 SIGReg, +2.9 VICReg), which is enough reason to test an unchanged Two-Room baseline vs baseline plus penalty, even before the tint question is settled.
+- 2026-10-22. LeWM training wrapper `scripts/lewm_train.py` works (smoke run 120 steps, weak penalty 0.02 to 0.1 at image level). Planning eval works on the smoke checkpoint (40% on 5 episodes, not meaningful). Queued 11-lewm-tworoom-base (weight 0, W as monitor) and 12-lewm-tworoom-r2 (weight 1), 10 epochs each, to start when the CIFAR CCA runs finish. Expectation. No large effect on Two-Room, since it has no visual nuisance. A drop would mean the penalty removes useful global features. The next LeWM step is a distractor (random background color per episode, as tint), which is where the penalty should help.

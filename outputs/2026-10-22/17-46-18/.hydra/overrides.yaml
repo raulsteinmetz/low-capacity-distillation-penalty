@@ -1,0 +1,6 @@
+- data=tworoom
+- output_model_name=smoke-lewm
+- weak.weight=1.0
+- trainer.max_epochs=1
+- +trainer.limit_train_batches=20
+- +trainer.limit_val_batches=5

@@ -1,0 +1,23 @@
+# LeWM training config from external/le-wm/config/train/lewm.yaml plus the weak-reproducer penalty
+defaults:
+  - lewm
+  - _self_
+
+hydra:
+  searchpath:
+    - file://external/le-wm/config/train
+
+# W reads the preprocessed frames, one feature vector per 14x14 patch, mean-pooled to one vector per frame.
+# Its target is the projector output emb (B, T, D) that SIGReg regularizes and the predictor reads.
+# W maximizes the penalty and E minimizes it in the same backward pass, through detached copies.
+weak:
+  weight: 0.0
+  penalty: r2 # r2 or cca
+  var_floor: 0.01
+  cca_ridge: 1.0e-6
+  width: 32
+  depth: 1
+  patch_window: 1
+  learn_pos: true
+  lr: 1.0e-3
+  weight_decay: 0.0
