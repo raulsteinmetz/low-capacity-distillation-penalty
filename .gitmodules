@@ -1,0 +1,12 @@
+[submodule "external/ijepa"]
+	path = external/ijepa
+	url = https://github.com/facebookresearch/ijepa.git
+[submodule "external/vicreg"]
+	path = external/vicreg
+	url = https://github.com/facebookresearch/vicreg.git
+[submodule "external/lejepa"]
+	path = external/lejepa
+	url = https://github.com/galilai-group/lejepa.git
+[submodule "external/le-wm"]
+	path = external/le-wm
+	url = https://github.com/lucas-maes/le-wm.git

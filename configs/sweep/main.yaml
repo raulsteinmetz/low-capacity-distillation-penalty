@@ -1,0 +1,26 @@
+# runs compared in the experiment, each overriding configs/train/base.yaml
+runs:
+  - name: 1-no-reg
+    set: {}
+  - name: 2-wrp-r2
+    set: {weak_reproducer.weight: 1.0}
+  - name: 2-wrp-hsic-image
+    set: {weak_reproducer.weight: 1.0, weak_reproducer.penalty: hsic, weak_reproducer.level: image}
+  - name: 2-wrp-hsic-token
+    set: {weak_reproducer.weight: 1.0, weak_reproducer.penalty: hsic, weak_reproducer.token_sample: 1024}
+  - name: 3-vicreg
+    set: {vicreg.std_weight: 1.0, vicreg.cov_weight: 0.08}
+  - name: 4-sigreg
+    set: {sigreg.weight: 0.045}
+  - name: 5-sigreg-wrp-r2
+    set: {sigreg.weight: 0.045, weak_reproducer.weight: 1.0}
+  - name: 5-sigreg-wrp-hsic-image
+    set: {sigreg.weight: 0.045, weak_reproducer.weight: 1.0, weak_reproducer.penalty: hsic, weak_reproducer.level: image}
+  - name: 2-wrp-r2-floor025
+    set: {weak_reproducer.weight: 1.0, weak_reproducer.var_floor: 0.25}
+  - name: 6-vicreg-wrp-r2
+    set: {vicreg.std_weight: 1.0, vicreg.cov_weight: 0.08, weak_reproducer.weight: 1.0}
+  - name: 7-tint-sigreg
+    set: {data.tint: 0.4, sigreg.weight: 0.045}
+  - name: 8-tint-sigreg-wrp-r2
+    set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 1.0}

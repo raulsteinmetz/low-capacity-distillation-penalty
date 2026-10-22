@@ -1,0 +1,25 @@
+[project]
+name = "low-capacity-distillation-penalty"
+version = "0.1.0"
+description = "Weak-reproducer penalty against representation collapse in JEPAs"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "numpy",
+    "pyyaml>=6.0",
+    "matplotlib",
+    "lejepa",
+    "scipy>=1.17.1",
+    "pyarrow>=26.0.0",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+lejepa = { path = "external/lejepa", editable = true }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

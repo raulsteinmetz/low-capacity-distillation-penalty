@@ -1,0 +1,85 @@
+seed: 0
+device: cuda
+bf16: true
+
+data:
+  img_size: 32
+  crop_scale: [0.3, 1.0] # I-JEPA crops, no other augmentation
+  tint: 0.0 # blend strength of a random color per image, 0 is plain CIFAR-10
+  batch_size: 256
+  eval_batch_size: 512
+  num_workers: 8
+
+model:
+  img_size: 32
+  patch_size: 4
+  embed_dim: 192
+  depth: 6
+  num_heads: 3
+  pred_embed_dim: 96
+  pred_depth: 3
+  pred_num_heads: 3
+
+# I-JEPA multi-block masks on the 8x8 patch grid, with smaller target blocks than the official 0.15-0.2 so more context survives
+mask:
+  enc_mask_scale: [0.85, 1.0]
+  pred_mask_scale: [0.1, 0.15]
+  aspect_ratio: [0.75, 1.5]
+  num_enc_masks: 1
+  num_pred_masks: 4
+  min_keep: 4
+  allow_overlap: false
+
+optim:
+  epochs: 100
+  max_steps_per_epoch: null # null runs the full loader, an int caps it for smoke tests
+  lr: 5.0e-4
+  final_lr: 5.0e-7
+  warmup_epochs: 5
+  weight_decay: 0.05
+  grad_clip: 1.0 # as in LeWM
+
+# targets come from E itself with no EMA. stop_grad false lets gradients flow through the targets as in LeWM.
+# targets get the I-JEPA LayerNorm without affine params, the prediction loss is MSE as in LeWM
+stop_grad: false
+
+# W is always trained, to maximize the same penalty E minimizes. weight 0 means E is not penalized and W is only a monitor
+weak_reproducer:
+  weight: 0.0
+  penalty: r2 # r2 or hsic
+  level: token # token or image
+  token_sample: 16384 # tokens per batch used at token level, 16384 is all of them at batch 256
+  var_floor: 0.01 # r2 only, in target LayerNorm units
+  width: 32
+  depth: 1
+  patch_window: 1 # receptive field in patches, odd
+  learn_pos: true
+  inner_steps: 1
+  lr: 1.0e-3
+  weight_decay: 0.0
+
+# applied to mean-pooled normalized embeddings. official VICReg uses sim 25, std 25, cov 1 summed over two branches,
+# which with one branch and our prediction loss at weight 1 is std 1 and cov 0.08
+vicreg:
+  std_weight: 0.0
+  cov_weight: 0.0
+
+# LeWM uses weight 0.09 with 128 samples per statistic. the statistic grows with sample count, so 0.045 matches it at 256
+sigreg:
+  weight: 0.0
+  knots: 17
+  num_slices: 1024
+
+eval:
+  every_epochs: 5
+  token_images: 2048 # test images whose tokens go into the token metrics
+  tint: # test images with a fixed random color per image, to measure how linearly decodable the color is
+    strength: 0.4
+    seed: 0
+    ridge: 1.0e-3
+  probe:
+    seed: 0
+    epochs: 50
+    batch_size: 1024
+    lr: 1.0e-3
+    weight_decay: 1.0e-6

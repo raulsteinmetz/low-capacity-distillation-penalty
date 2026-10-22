@@ -1,0 +1,12 @@
+__pycache__
+
+# python envs
+.venv/
+
+# LLM for code systems
+.claude/
+.codex/
+.agents/
+
+data/
+runs/

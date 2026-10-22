@@ -1,0 +1,46 @@
+Plan
+
+Idea
+A tiny network W learns to copy the encoder's embeddings from raw pixels.
+The encoder is penalized when W copies it well.
+Hope: the encoder stops relying on cheap features (color, texture) and learns harder ones.
+
+What we know so far (CIFAR-10)
+- JEPA with no regularizer collapses in 3 epochs, as expected.
+- The penalty alone does not stop collapse. The encoder stays almost constant and adds a small amount of variation W cannot copy.
+- So the penalty is not an anti-collapse method by itself. SIGReg does that job already.
+- Why. Collapse is about the size and number of independent directions of the embeddings. The penalty only measures how they relate to the pixels. A scale-free penalty ignores size, a constant output is independent of everything, and per-dim penalties do not see dims that copy each other.
+- Its possible role is choosing what the encoder keeps, on top of a spread term like SIGReg.
+
+Results of step 1 (linear probe on CIFAR-10, chance 10%, untrained encoder 26.7%, one seed)
+- no regularizer 10.0, collapsed
+- penalty alone (R2) 15.6, near collapse
+- penalty alone (HSIC, image or token) 10.3 and 10.0, collapsed
+- VICReg 36.3, best
+- SIGReg 30.7 (3 seeds, spread 0.6)
+- SIGReg plus R2 penalty 34.5 (3 seeds, spread 0.2), 3.7 above SIGReg. The gain holds across seeds.
+- SIGReg plus HSIC penalty 26.9 at the end, 35.6 at its best (epoch 25), then degrades
+All methods learn little over the untrained encoder in this small setup, so gaps of a few points need more seeds.
+Running now: VICReg plus R2 penalty (3 seeds) with two more VICReg seeds, and tinted CIFAR (SIGReg vs SIGReg plus penalty, 2 seeds each).
+
+Step 1. CIFAR runs
+VICReg, SIGReg, SIGReg plus penalty, and the HSIC versions of the penalty.
+The key comparison is SIGReg alone vs SIGReg plus penalty.
+Also one run of the penalty with a variance floor of 0.25 instead of 0.01. A high floor forces every dim to keep real spread, so the penalty then carries its own variance term.
+Expected: no collapse, but worse than SIGReg since nothing stops dims from copying each other.
+
+Step 2. Tinted CIFAR (started 2026-10-22, tint strength 0.4)
+Add a random color tint to each image, unrelated to the class.
+We measure how well a linear map recovers the tint from the embedding (tint_r2). An untrained encoder already gets 0.76.
+Check if SIGReg alone encodes the tint and if the penalty removes it while keeping class accuracy.
+Repeat with small embedding sizes (16 to 32 dims), where wasted dims cost the most.
+This is cheap (hours) and tells us if the idea works at all.
+
+Step 3. LeWorldModel, only if step 2 works
+First Two-Room with no changes, to see how much the penalty hurts when the task state is itself a simple feature.
+Then Two-Room or PushT with a distracting background, where the penalty could help planning.
+Each run takes a few hours on the uniws GPU.
+
+Expected outcome
+No gain on plain CIFAR accuracy.
+A possible gain where simple features are nuisances (tint, background distractors).
