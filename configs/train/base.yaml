@@ -46,10 +46,11 @@ stop_grad: false
 # W is always trained, to maximize the same penalty E minimizes. weight 0 means E is not penalized and W is only a monitor
 weak_reproducer:
   weight: 0.0
-  penalty: r2 # r2 or hsic
+  penalty: r2 # r2, cca or hsic
   level: token # token or image
   token_sample: 16384 # tokens per batch used at token level, 16384 is all of them at batch 256
   var_floor: 0.01 # r2 only, in target LayerNorm units
+  cca_ridge: 1.0e-6 # cca only, ridge on each covariance relative to its mean variance. 1e-3 lets E hide signal in low-variance dims
   width: 32
   depth: 1
   patch_window: 1 # receptive field in patches, odd

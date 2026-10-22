@@ -24,3 +24,11 @@ runs:
     set: {data.tint: 0.4, sigreg.weight: 0.045}
   - name: 8-tint-sigreg-wrp-r2
     set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 1.0}
+  - name: 9-tint-sigreg-cca
+    set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 1.0, weak_reproducer.penalty: cca}
+  - name: 9-tint-sigreg-cca-w03
+    set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 0.3, weak_reproducer.penalty: cca}
+  - name: 9-tint-sigreg-cca-w3
+    set: {data.tint: 0.4, sigreg.weight: 0.045, weak_reproducer.weight: 3.0, weak_reproducer.penalty: cca}
+  - name: 10-sigreg-cca
+    set: {sigreg.weight: 0.045, weak_reproducer.weight: 1.0, weak_reproducer.penalty: cca}

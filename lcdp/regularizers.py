@@ -1,5 +1,5 @@
 '''
-    Anti-collapse terms for E, namely the weak-reproducer penalty (R2 or HSIC), VICReg variance and covariance, and SIGReg.
+    Anti-collapse terms for E, namely the weak-reproducer penalty (R2, CCA or HSIC), VICReg variance and covariance, and SIGReg.
 '''
 
 import lejepa
@@ -43,6 +43,21 @@ def reproducibility(pred: torch.Tensor, target: torch.Tensor, var_floor: float) 
     return (1 - resid / var_t.clamp(min=var_floor)).mean()
 
 
+def whiten(x: torch.Tensor, ridge: float) -> torch.Tensor:
+    '''Center x (n, d) and map it to identity covariance, with ridge added relative to the mean variance.'''
+    x = x - x.mean(0)
+    cov = x.T @ x / len(x)
+    cov = cov + ridge * cov.diagonal().mean() * torch.eye(x.size(1), device=x.device, dtype=x.dtype)
+    return torch.linalg.solve_triangular(torch.linalg.cholesky(cov), x.T, upper=False).T
+
+
+def cca_dependence(w: torch.Tensor, e: torch.Tensor, ridge: float) -> torch.Tensor:
+    '''Sum of squared canonical correlations between w (n, d) and e (n, d), divided by d.'''
+    wz, ez = whiten(w.double(), ridge), whiten(e.double(), ridge)
+    cross = wz.T @ ez / len(w)
+    return (cross.square().sum() / e.size(1)).float()
+
+
 def rbf_kernel(x: torch.Tensor) -> torch.Tensor:
     '''RBF kernel matrix with the width set to the median pairwise distance of the batch.'''
     sq = torch.cdist(x, x).square()
@@ -75,6 +90,8 @@ def weak_penalty(w_out: torch.Tensor, h: torch.Tensor, cfg: dict, token_idx: tor
         w, e = w_out.flatten(0, 1)[token_idx], h.flatten(0, 1)[token_idx]
     if cfg['penalty'] == 'r2':
         return reproducibility(w, e, cfg['var_floor'])
+    if cfg['penalty'] == 'cca':
+        return cca_dependence(w, e, cfg['cca_ridge'])
     return hsic(e, w)
 
 

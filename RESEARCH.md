@@ -19,6 +19,7 @@ Related work is in `literature/` (14 PDFs). The closest prior work is ReBias (Ba
 - Official code is used through git submodules in `external/` (ijepa, vicreg, lejepa, le-wm). `lcdp/masks.py` patches two flaws of the official I-JEPA mask collator on small grids (last row and column never used, context cut biased to top rows).
 - Penalty options (`weak_reproducer` in `configs/train/base.yaml`).
   - `penalty: r2` is per-dim R2 of the best affine readout of W's output, with target variance floored at `var_floor`. It is sign and scale free.
+  - `penalty: cca` is the sum of squared canonical correlations between W tokens and E tokens, divided by the embedding dim. It sees signal spread over many dims or hidden in low-variance dims. Ridge `cca_ridge` is relative to the mean variance, and must be tiny (1e-6). At 1e-3 a synthetic test showed E can hide fully predictable dims with 1e-4 of the mean variance. Two independent inputs score about d/n = 0.012 at n = 16384 tokens (finite-sample bias).
   - `penalty: hsic` is normalized HSIC with RBF kernels and per-batch median width (unbiased estimator from clovaai/rebias).
   - `level: token` or `image` (mean-pooled).
   - W is always trained to maximize the same penalty E minimizes. With `weight: 0` W is only a monitor.
@@ -52,10 +53,8 @@ Tinted CIFAR (tint 0.4). Probe on clean images. tint_r2 ceiling from the mean pi
 | run | probe | tint_r2 | note |
 |---|---|---|---|
 | untrained encoder | 26.7 | 0.76 | |
-| 7 SIGReg | 26.3 (26.5, 26.2) | 0.74, 0.75 | learns nothing over the untrained encoder |
-| 8 SIGReg plus R2 penalty | 27.4 (27.7, 27.1) | 0.75, 0.75 | +1.1, tint kept |
-
-Seed 2 of runs 7 and 8 is running.
+| 7 SIGReg | 26.4 +- 0.2 (26.5, 26.2, 26.6) | 0.74 to 0.75 | learns nothing over the untrained encoder |
+| 8 SIGReg plus R2 penalty | 28.0 +- 1.1 (27.7, 27.1, 29.2) | 0.75 | +1.6, tint kept |
 
 ## Main findings
 
@@ -115,3 +114,6 @@ Seed 2 of runs 7 and 8 is running.
   - Note. Code from this point applies the Tint transform even at strength 0. It draws from the worker RNG, so crops differ from earlier runs with the same seed. Runs 6-vicreg-wrp-r2-seed1 and 3-vicreg-seed2, started by an existing chain after this change, are affected. They remain valid seeds.
 - 2026-10-22. VICReg seeds finished. VICReg 35.0 +- 1.1, VICReg plus R2 37.9 +- 0.4 (`runs/report-vicreg-seeds`). The penalty raises pooled effective rank from about 64 to about 86 and cuts the test weak penalty from 0.16 to 0.019. Same pattern as with SIGReg.
 - 2026-10-22. Tinted CIFAR seeds 0 and 1 finished (`runs/report-tint`). SIGReg 26.3, SIGReg plus R2 27.4, untrained 26.7. Tint at strength 0.4 stops SIGReg from learning class features at all. tint_r2 stays at 0.74 to 0.75 for all runs, equal to the 0.75 that the mean pixel color gives (4x4 color grid gives 0.78). So no encoder drops color, and the R2 penalty does not either. Negative result for the main hypothesis with the per-dim R2 penalty. Next step 0 (multivariate penalty) follows from this. Launched seed 2 of runs 7 and 8 to complete 3 seeds.
+- 2026-10-22. Seed 2 of tint runs done. 3 seeds: SIGReg 26.4 +- 0.2, SIGReg plus R2 28.0 +- 1.1. tint_r2 0.74 and 0.75. Conclusion unchanged.
+- 2026-10-22. Added `penalty: cca` (next step 0). Checked on synthetic data that it is invariant to mixing E dims and catches 3 predictable dims with tiny variance among 189 large independent ones, at ridge 1e-6. Launched 9-tint-sigreg-cca at weights 0.3, 1, 3 and 10-sigreg-cca (clean CIFAR, weight 1). Wake-up for the loop moved from ScheduleWakeup to a session cron at :07 and :37 after a missed wake-up.
+  - Hypothesis. CCA catches the color that per-dim R2 missed, so tint_r2 drops below 0.75. Risk. Any direction of a ViT token that is predictable from its own 4x4 patch is penalized, which includes edges and local texture, so probe accuracy may drop at high weight.
