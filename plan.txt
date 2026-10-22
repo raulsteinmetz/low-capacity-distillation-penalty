@@ -21,7 +21,13 @@ Results of step 1 (linear probe on CIFAR-10, chance 10%, untrained encoder 26.7%
 - SIGReg plus R2 penalty 34.5 (3 seeds, spread 0.2), 3.7 above SIGReg. The gain holds across seeds.
 - SIGReg plus HSIC penalty 26.9 at the end, 35.6 at its best (epoch 25), then degrades
 All methods learn little over the untrained encoder in this small setup, so gaps of a few points need more seeds.
-Running now: VICReg plus R2 penalty (3 seeds) with two more VICReg seeds, and tinted CIFAR (SIGReg vs SIGReg plus penalty, 2 seeds each).
+- VICReg 35.0 (3 seeds), VICReg plus R2 penalty 37.9 (3 seeds), 2.9 above.
+
+Tinted CIFAR results (2 seeds, tint 0.4)
+- SIGReg 26.3, SIGReg plus R2 penalty 27.4, untrained 26.7. The tint stops SIGReg from learning.
+- The penalty does not remove the tint. Every encoder keeps as much color as the mean pixel color holds.
+- Likely reason. The R2 penalty checks each embedding dim on its own. The encoder can hide color as a small part of many dims.
+- Next. A penalty that looks at all dims together (canonical correlation between W and E), tested on tinted CIFAR.
 
 Step 1. CIFAR runs
 VICReg, SIGReg, SIGReg plus penalty, and the HSIC versions of the penalty.

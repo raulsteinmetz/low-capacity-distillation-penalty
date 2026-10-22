@@ -39,12 +39,23 @@ Related work is in `literature/` (14 PDFs). The closest prior work is ReBias (Ba
 | 2 R2 penalty alone | 15.6 | near collapse, 98.8% of each token is one shared vector |
 | 2 R2 penalty alone, floor 0.25 | see `runs/2-wrp-r2-floor025` | pooled spread collapsed again |
 | 2 HSIC penalty alone, image / token | 10.3 / 10.0 | collapsed |
-| 3 VICReg | 36.3 | best |
+| 3 VICReg | 35.0 +- 1.1 | 3 seeds (36.3, 33.6, 35.2) |
+| 6 VICReg plus R2 penalty | 37.9 +- 0.4 | 3 seeds (37.3, 38.3, 38.0), +2.9 over VICReg, best |
 | 4 SIGReg | 30.7 +- 0.6 | 3 seeds (31.4, 30.4, 30.4) |
 | 5 SIGReg plus R2 penalty | 34.5 +- 0.2 | 3 seeds (34.5, 34.5, 34.3), +3.7 over SIGReg |
 | 5 SIGReg plus HSIC penalty (image) | 26.9 final, 35.6 best at epoch 25 | unstable, degrades |
 
-Rows without a seed count are single seed. VICReg plus R2 penalty (run 6, seeds 0 to 2) and VICReg seeds 1 and 2 are running (`runs/logs/chain-vic-*.log`). Tinted CIFAR runs 7 and 8 are running (`runs/logs/chain-tint-*.log`).
+Rows without a seed count are single seed.
+
+Tinted CIFAR (tint 0.4). Probe on clean images. tint_r2 ceiling from the mean pixel color alone is 0.75.
+
+| run | probe | tint_r2 | note |
+|---|---|---|---|
+| untrained encoder | 26.7 | 0.76 | |
+| 7 SIGReg | 26.3 (26.5, 26.2) | 0.74, 0.75 | learns nothing over the untrained encoder |
+| 8 SIGReg plus R2 penalty | 27.4 (27.7, 27.1) | 0.75, 0.75 | +1.1, tint kept |
+
+Seed 2 of runs 7 and 8 is running.
 
 ## Main findings
 
@@ -55,10 +66,13 @@ Rows without a seed count are single seed. VICReg plus R2 penalty (run 6, seeds 
    - A per-dim penalty does not see dims that copy each other.
    - The only anti-collapse force in the R2 version is the variance floor, which is a variance term in disguise.
    - Observed escape. E stays nearly constant and keeps a small variation W cannot fit.
-2. On top of SIGReg it helps by 3.7 points over 3 seeds, well outside the seed spread (std 0.6 and 0.2). It also raises pooled effective rank from about 23 to about 38 and cuts the test weak penalty from 0.22 to 0.025. Whether this survives a stronger baseline is open.
+2. On top of SIGReg it helps by 3.7 points over 3 seeds, well outside the seed spread (std 0.6 and 0.2). It also raises pooled effective rank from about 23 to about 38 and cuts the test weak penalty from 0.22 to 0.025. Whether this survives a stronger baseline is open. On top of VICReg it helps by 2.9 points over 3 seeds (35.0 +- 1.1 to 37.9 +- 0.4).
+4. The R2 penalty does not remove a color tint. On tinted CIFAR every encoder, with or without the penalty and also those trained on clean images, keeps tint_r2 at 0.74 to 0.75. The mean pixel color alone gives 0.75, so the embeddings keep all of the global color. The likely reason is that the R2 penalty is a fraction of variance per E dim. E can keep color as a small share of each dim's variance, next to content W cannot fit, and the per-dim R2 stays low (test weak penalty 0.034) while a linear readout over all dims still recovers the color.
 3. The whole setup is weak. The best method learns only about 10 points over an untrained encoder. Well-tuned SSL on CIFAR-10 reaches 80 to 90% with ResNet-18, strong augmentations, a projector and about 1000 epochs. A gain on a weak baseline may not survive on a strong one.
 
 ## Next steps, in order
+
+0. Multivariate penalty (added 2026-10-22 after the tint result). Replace per-dim R2 with a measure that catches information spread across dims, for example the sum of squared canonical correlations between W tokens and E tokens (linear CCA, ridge-regularized), or R2 of a linear readout from E to W's output. Test on tinted CIFAR first. Success means tint_r2 well below 0.75 with clean probe accuracy kept.
 
 1. Collect the seed runs. Report mean and std over 3 seeds for SIGReg vs SIGReg plus R2, and VICReg vs VICReg plus R2. Use `python -m scripts.report <runs> --out runs/<report-name>`.
 2. Strengthen the baseline, keeping crop-only augmentation so it stays a JEPA.
@@ -99,3 +113,5 @@ Rows without a seed count are single seed. VICReg plus R2 penalty (run 6, seeds 
   - Why tint before the stronger baseline (next step 2). The tint experiment tests the hypothesis itself (does the penalty remove a cheap nuisance feature) with a small data change. The stronger baseline needs a projector and 300 to 400 epoch runs, and only tells us if the +3.7 survives. With two free GPU slots, the cheaper and more informative run goes first. Step 2 stays next after this.
   - What to read. Compare tint_r2 and clean probe_acc between 7 and 8. A useful penalty lowers tint_r2 and keeps or raises probe_acc.
   - Note. Code from this point applies the Tint transform even at strength 0. It draws from the worker RNG, so crops differ from earlier runs with the same seed. Runs 6-vicreg-wrp-r2-seed1 and 3-vicreg-seed2, started by an existing chain after this change, are affected. They remain valid seeds.
+- 2026-10-22. VICReg seeds finished. VICReg 35.0 +- 1.1, VICReg plus R2 37.9 +- 0.4 (`runs/report-vicreg-seeds`). The penalty raises pooled effective rank from about 64 to about 86 and cuts the test weak penalty from 0.16 to 0.019. Same pattern as with SIGReg.
+- 2026-10-22. Tinted CIFAR seeds 0 and 1 finished (`runs/report-tint`). SIGReg 26.3, SIGReg plus R2 27.4, untrained 26.7. Tint at strength 0.4 stops SIGReg from learning class features at all. tint_r2 stays at 0.74 to 0.75 for all runs, equal to the 0.75 that the mean pixel color gives (4x4 color grid gives 0.78). So no encoder drops color, and the R2 penalty does not either. Negative result for the main hypothesis with the per-dim R2 penalty. Next step 0 (multivariate penalty) follows from this. Launched seed 2 of runs 7 and 8 to complete 3 seeds.
